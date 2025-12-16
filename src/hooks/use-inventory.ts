@@ -1,0 +1,263 @@
+// my-app/src/hooks/use-inventory.ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+// Types
+export type StockMovementType = 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER' | 'OPNAME';
+export type StockOpnameStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface InventoryItem {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  reorderLevel?: number;
+  product?: {
+    id: string;
+    name: string;
+    sku: string;
+  };
+  warehouse?: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  type: StockMovementType;
+  quantity: number;
+  fromWarehouseId?: string;
+  toWarehouseId?: string;
+  reference?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockOpname {
+  id: string;
+  warehouseId: string;
+  status: StockOpnameStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  items: Array<{
+    productId: string;
+    systemQuantity: number;
+    actualQuantity: number;
+    notes?: string;
+  }>;
+}
+
+export const useInventory = () => {
+  const queryClient = useQueryClient();
+
+  const getAuthToken = () => localStorage.getItem('token') || '';
+
+  // Get inventory by warehouse
+  const useWarehouseInventory = (warehouseId: string) => {
+    return useQuery<InventoryItem[]>({
+      queryKey: ['inventory', 'warehouse', warehouseId],
+      queryFn: async () => {
+        const { data } = await axios.get(`${API_URL}/inventory/warehouse/${warehouseId}`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        return data.data;
+      },
+      enabled: !!warehouseId,
+    });
+  };
+
+  // Get inventory by product
+  const useProductInventory = (productId: string) => {
+    return useQuery<InventoryItem[]>({
+      queryKey: ['inventory', 'product', productId],
+      queryFn: async () => {
+        const { data } = await axios.get(`${API_URL}/inventory/product/${productId}`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        return data.data;
+      },
+      enabled: !!productId,
+    });
+  };
+
+  // Add or update inventory item
+  const addOrUpdateItem = useMutation({
+    mutationFn: async (itemData: {
+      productId: string;
+      warehouseId: string;
+      quantity: number;
+      reorderLevel?: number;
+    }) => {
+      const { data } = await axios.post(
+        `${API_URL}/inventory`,
+        itemData,
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      );
+      return data.data;
+    },
+    onSuccess: (_, variables) => {
+queryClient.invalidateQueries({ queryKey: ['inventory'] });
+queryClient.invalidateQueries({ queryKey: ['inventory', 'warehouse', variables.warehouseId] });
+queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.productId] });
+    },
+  });
+
+  // Update inventory quantity
+  const updateQuantity = useMutation({
+    mutationFn: async (params: { id: string; quantity: number }) => {
+      const { data } = await axios.patch(
+        `${API_URL}/inventory/${params.id}/quantity`,
+        { quantity: params.quantity },
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
+  // Delete inventory item
+  const deleteItem = useMutation({
+    mutationFn: async (id: string) => {
+      await axios.delete(`${API_URL}/inventory/${id}`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
+  // Stock Movements
+  const useStockMovements = (params?: {
+    productId?: string;
+    warehouseId?: string;
+    type?: StockMovementType;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    return useQuery<{ data: StockMovement[]; total: number }>({
+      queryKey: ['stock-movements', params],
+      queryFn: async () => {
+        const { data } = await axios.get(`${API_URL}/inventory/movements`, {
+          params,
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        return data.data;
+      },
+      enabled: !!params,
+    });
+  };
+
+  const createStockMovement = useMutation({
+    mutationFn: async (movementData: {
+      productId: string;
+      type: StockMovementType;
+      quantity: number;
+      fromWarehouseId?: string;
+      toWarehouseId?: string;
+      reference?: string;
+      notes?: string;
+    }) => {
+      const { data } = await axios.post(
+        `${API_URL}/inventory/movements`,
+        movementData,
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
+  // Stock Opname
+  const useStockOpnames = (params?: {
+    warehouseId?: string;
+    status?: StockOpnameStatus;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    return useQuery<{ data: StockOpname[]; total: number }>({
+      queryKey: ['stock-opnames', params],
+      queryFn: async () => {
+        const { data } = await axios.get(`${API_URL}/inventory/opnames`, {
+          params,
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        return data.data;
+      },
+      enabled: !!params,
+    });
+  };
+
+  const createStockOpname = useMutation({
+    mutationFn: async (opnameData: {
+      warehouseId: string;
+      notes?: string;
+      items: Array<{
+        productId: string;
+        actualQuantity: number;
+        notes?: string;
+      }>;
+    }) => {
+      const { data } = await axios.post(
+        `${API_URL}/inventory/opnames`,
+        opnameData,
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-opnames'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
+  const updateStockOpnameStatus = useMutation({
+    mutationFn: async (params: { id: string; status: StockOpnameStatus }) => {
+      const { data } = await axios.patch(
+        `${API_URL}/inventory/opnames/${params.id}/status`,
+        { status: params.status },
+        { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stock-opnames'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
+  return {
+    // Inventory
+    useWarehouseInventory,
+    useProductInventory,
+    addOrUpdateItem,
+    updateQuantity,
+    deleteItem,
+    
+    // Stock Movements
+    useStockMovements,
+    createStockMovement,
+    
+    // Stock Opname
+    useStockOpnames,
+    createStockOpname,
+    updateStockOpnameStatus,
+  };
+};
