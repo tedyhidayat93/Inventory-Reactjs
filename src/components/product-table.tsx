@@ -63,11 +63,17 @@ export const columns: ColumnDef<Product>[] = [
     header: "Created At",
     cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
   },
+  // ... existing imports ...
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const product = row.original
+    cell: ({ row, table }) => {
+      const product = row.original;
+      const meta = table.options.meta as {
+        onEdit?: (product: Product) => void;
+        onDelete?: (id: string) => void;
+      } | undefined;
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -79,13 +85,7 @@ export const columns: ColumnDef<Product>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => {
-                // @ts-ignore - onEdit is checked in the parent component
-                if (row.table.options.meta?.onEdit) {
-                  // @ts-ignore
-                  row.table.options.meta.onEdit(product)
-                }
-              }}
+              onClick={() => meta?.onEdit?.(product)}
               className="cursor-pointer"
             >
               <Pencil className="mr-2 h-4 w-4" />
@@ -93,24 +93,20 @@ export const columns: ColumnDef<Product>[] = [
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                // @ts-ignore - onDelete is checked in the parent component
-                if (row.table.options.meta?.onDelete) {
-                  if (window.confirm('Are you sure you want to delete this product?')) {
-                    // @ts-ignore
-                    row.table.options.meta.onDelete(product.id)
-                  }
+                if (window.confirm('Are you sure you want to delete this product?')) {
+                  meta?.onDelete?.(product.id);
                 }
               }}
-              className="cursor-pointer text-red-600 hover:text-red-600!"
+              className="cursor-pointer text-red-600 hover:text-red-600"
             >
               <Trash className="mr-2 h-4 w-4" />
               <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      )
+      );
     },
-  },
+  }
 ]
 
 interface ProductTableProps {

@@ -1,6 +1,4 @@
-import * as z from "zod"
 import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -11,18 +9,14 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Product } from "@/hooks/use-product"
 import { Loader2 } from "lucide-react"
 
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  sku: z.string().min(3, "SKU must be at least 3 characters"),
-  price: z.coerce.number().min(0, "Price must be a positive number"),
-  description: z.string().optional(),
-})
-
-type ProductFormValues = z.infer<typeof formSchema>
+type ProductFormValues = {
+  name: string
+  sku: string
+  price: number
+}
 
 interface ProductFormProps {
   product?: Product
@@ -31,23 +25,39 @@ interface ProductFormProps {
   isLoading: boolean
 }
 
-export function ProductForm({ product, onSubmit, onCancel, isLoading }: ProductFormProps) {
+export function ProductForm({
+  product,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: ProductFormProps) {
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(formSchema),
     defaultValues: {
       name: product?.name ?? "",
       sku: product?.sku ?? "",
-      price: product?.price ? Number(product.price) : 0,
-      description: product?.description ?? "",
+      price: product?.price ?? 0,
     },
+    mode: "onSubmit",
   })
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <Form<ProductFormValues> {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-4"
+        noValidate
+      >
+        {/* NAME */}
         <FormField
           control={form.control}
           name="name"
+          rules={{
+            required: "Name is required",
+            minLength: {
+              value: 2,
+              message: "Name must be at least 2 characters",
+            },
+          }}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Product Name</FormLabel>
@@ -58,10 +68,19 @@ export function ProductForm({ product, onSubmit, onCancel, isLoading }: ProductF
             </FormItem>
           )}
         />
+
         <div className="grid grid-cols-2 gap-4">
+          {/* SKU */}
           <FormField
             control={form.control}
             name="sku"
+            rules={{
+              required: "SKU is required",
+              minLength: {
+                value: 3,
+                message: "SKU must be at least 3 characters",
+              },
+            }}
             render={({ field }) => (
               <FormItem>
                 <FormLabel>SKU</FormLabel>
@@ -72,37 +91,47 @@ export function ProductForm({ product, onSubmit, onCancel, isLoading }: ProductF
               </FormItem>
             )}
           />
+
+          {/* PRICE */}
           <FormField
             control={form.control}
             name="price"
+            rules={{
+              required: "Price is required",
+              min: {
+                value: 0,
+                message: "Price must be a positive number",
+              },
+            }}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price</FormLabel>
+                <FormLabel>Price (IDR)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="Enter price" {...field} />
+                  <Input
+                    placeholder="Enter price"
+                    value={field.value ? new Intl.NumberFormat('id-ID').format(Number(field.value)) : ''}
+                    onChange={(e) => {
+                      // Remove all non-digit characters
+                      const value = e.target.value.replace(/\D/g, '');
+                      // Convert to number or 0 if empty
+                      field.onChange(value === '' ? 0 : Number(value));
+                    }}
+                    onBlur={() => {
+                      // Format the number when input loses focus
+                      if (field.value) {
+                        field.onChange(Number(field.value));
+                      }
+                    }}
+                    className="text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Enter product description"
-                  className="min-h-[100px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
+        {/* ACTIONS */}
         <div className="flex justify-end space-x-2 pt-4">
           <Button
             type="button"
@@ -113,7 +142,9 @@ export function ProductForm({ product, onSubmit, onCancel, isLoading }: ProductF
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             {product ? "Update Product" : "Create Product"}
           </Button>
         </div>

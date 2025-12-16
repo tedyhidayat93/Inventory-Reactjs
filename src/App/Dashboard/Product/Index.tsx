@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProductTable } from "@/components/product-table"
 import { ProductForm } from "@/components/product-form"
 import { useProducts, type Product } from "@/hooks/use-product"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function ProductPage() {
   const { 
@@ -85,6 +85,9 @@ export default function ProductPage() {
             <DialogTitle>
               {currentProduct ? 'Edit Product' : 'Add New Product'}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              This is a hidden description for screen readers.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <ProductForm
