@@ -35,7 +35,7 @@ A modern inventory management system built with React, TypeScript, and Vite, fea
 - Git
 
 ## Documentation for backend
-Please visit : `https://github.com/tedyhidayat93/inventory-backend`
+Please visit : `https://github.com/tedyhidayat93/BE-API-INVENTORY-BASIC`
 
 ## Installation
 
