@@ -21,18 +21,8 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { formatRupiah } from "@/lib/utils"
+import { InventoryItem } from "@/hooks/use-inventory"
 
-export interface InventoryItem {
-  id: string
-  productId: string
-  productName: string 
-  productUnitPrice: number  
-  warehouseId: string
-  warehouseName: string
-  totalPrice: number
-  quantity: number
-  lastUpdated: string 
-}
 export interface InventoryResponse {
   success: boolean
   data: InventoryItem[]
@@ -40,12 +30,16 @@ export interface InventoryResponse {
 }
 export const columns: ColumnDef<InventoryItem>[] = [
   {
-    accessorKey: "productName",
-    header: "Product",
-  },
-  {
     accessorKey: "warehouseName",
     header: "Warehouse",
+  },
+  {
+    accessorKey: "productSku",
+    header: "SKU",
+  },
+  {
+    accessorKey: "productName",
+    header: "Product",
   },
   {
     accessorKey: "productUnitPrice",
@@ -114,6 +108,24 @@ export function InventoryTable({ data, isLoading, onAddItem }: InventoryTablePro
           className="max-w-sm"
         />
       </div>
+      {data.length > 0 && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 p-4 bg-green-200/50 rounded-lg">
+          <div>
+            <h3 className="font-medium">Warehouse: {data[0]?.warehouseName || 'N/A'}</h3>
+            <p className="text-sm text-muted-foreground">
+              {data.length} products in stock
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Total Asset Value</p>
+            <p className="text-xl font-semibold">
+              {formatRupiah(
+  data.reduce((sum, item) => sum + (Number(item.totalPrice) || 0), 0)
+)}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>

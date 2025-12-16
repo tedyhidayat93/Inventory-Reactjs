@@ -15,6 +15,7 @@ export function NavMain({
   items: {
     title: string
     url: string
+    active: boolean
     icon?: LucideIcon
   }[]
 }) {
@@ -25,7 +26,8 @@ export function NavMain({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem onClick={()=> navigate(item.url)} key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
+              <SidebarMenuButton tooltip={item.title} className={item.active ? "bg-primary text-amber-100!" : ""} // Apply active class
+>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
               </SidebarMenuButton>

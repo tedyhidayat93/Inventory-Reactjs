@@ -57,7 +57,8 @@ export default function ProductPage() {
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto p-4 space-y-3">
+      <h1 className="text-2xl font-bold">Products</h1>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>

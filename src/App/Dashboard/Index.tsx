@@ -86,8 +86,9 @@ export default function DashboardPage() {
   if (isLoading) return <div className="container mx-auto p-6">Loading dashboard data...</div>
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
+    <div className="container mx-auto p-4 space-y-3">
       {/* Stock Summary Cards */}
+      <h1 className="text-2xl font-bold">Dashboard</h1>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Nilai Aset */}
         <Card>

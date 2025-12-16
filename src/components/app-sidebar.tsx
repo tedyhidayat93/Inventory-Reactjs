@@ -14,12 +14,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Box, ScanBarcodeIcon, Warehouse } from "lucide-react"
+import { Box, Boxes, ScanBarcodeIcon, Warehouse } from "lucide-react"
 
 import { useAuth } from "@/hooks/use-auth"
+import { useLocation } from "react-router"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
+  const location = useLocation();
+  
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
   const data = {
     user: {
       name: user?.data?.name,
@@ -31,21 +37,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Dashboard",
         url: "/dashboard",
         icon: IconDashboard,
+        active: isActive("/dashboard"),
       },
       {
         title: "Product",
         url: "/products",
         icon: Box,
+        active: isActive("/products"),
       },
       {
         title: "Warehouse",
         url: "/warehouse",
         icon: Warehouse,
+        active: isActive("/warehouse"),
       },
       {
         title: "Inventory",
         url: "/inventory",
         icon: ScanBarcodeIcon,
+        active: isActive("/inventory"),
       }
     ]
   }
@@ -58,9 +68,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="#">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Inventory System.</span>
+              <a href="/dashboard" className="text-black!">
+                <Boxes className="size-5!" />
+                <span className="text-base font-bold">Inventory System.</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

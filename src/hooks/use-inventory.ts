@@ -9,7 +9,12 @@ export type StockOpnameStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELL
 export interface InventoryItem {
   id: string;
   productId: string;
+  productName: string;
   warehouseId: string;
+  productSku: string;
+  warehouseName: string;
+  productUnitPrice: number;
+  totalPrice: number;
   quantity: number;
   reorderLevel?: number;
   product?: {
@@ -21,8 +26,7 @@ export interface InventoryItem {
     id: string;
     name: string;
   };
-  createdAt: string;
-  updatedAt: string;
+  lastUpdated: string;
 }
 
 export interface StockMovement {
