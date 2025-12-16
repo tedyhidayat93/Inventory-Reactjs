@@ -60,11 +60,11 @@ export default function WarehousePage() {
               Manage your warehouses and their details
             </p>
           </div>
-          <Button onClick={handleAddWarehouse}>Add Warehouse</Button>
         </CardHeader>
         <CardContent>
           <WarehouseTable 
             data={warehouses} 
+            onAdd={handleAddWarehouse}
             onEdit={handleEditWarehouse}
             onDelete={handleDeleteWarehouse}
             isLoading={isLoading}
