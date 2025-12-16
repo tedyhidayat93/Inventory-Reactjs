@@ -20,7 +20,6 @@ import { useAuth } from "@/hooks/use-auth"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
-  console.log(user)
   const data = {
     user: {
       name: user?.data?.name,

@@ -42,7 +42,7 @@ export const columns: ColumnDef<Product>[] = [
   },
   {
     accessorKey: "price",
-    header: "Price",
+    header: "Unit Price",
     cell: ({ row }) => {
       const price = parseFloat(row.getValue("price"))
       const formatted = formatRupiah(price)

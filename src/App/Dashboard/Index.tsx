@@ -96,7 +96,29 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatRupiah(totalStockValue)}</div>
-            <p className="text-xs text-muted-foreground">Total nilai aset seluruh gudang</p>
+            <p className="text-xs text-muted-foreground mb-2">Total nilai aset seluruh gudang</p>
+            
+            <details className="group">
+              <summary className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                <span>Lihat per gudang</span>
+                <svg 
+                  className="w-3 h-3 transition-transform group-open:rotate-180" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="space-y-1 mt-2 pt-2 border-t border-gray-200">
+                {warehouseStock.map(ws => (
+                  <div key={ws.warehouse} className="flex flex-col justify-between text-xs text-muted-foreground">
+                    <span>{ws.warehouse}:</span>
+                    <span className="font-semibold">{formatRupiah(ws.totalValue)}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
           </CardContent>
         </Card>
 

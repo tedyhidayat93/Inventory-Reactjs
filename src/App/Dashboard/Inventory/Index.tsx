@@ -19,7 +19,6 @@ import { useWarehouses } from "@/hooks/use-warehouse"
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function InventoryPage() {
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('')
   const [activeTab, setActiveTab] = useState("movement")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const { 
@@ -30,6 +29,9 @@ export default function InventoryPage() {
     // deleteWarehouse
   } = useWarehouses()
   const { useWarehouseInventory } = useInventory()
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(() => {
+    return warehouses.length > 0 ? warehouses[0].id : '';
+  });
   const { data: inventories = [], isLoading } = useWarehouseInventory(selectedWarehouseId)
 
   const handleSuccess = () => {

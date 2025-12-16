@@ -20,62 +20,52 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { ArrowUpDown } from "lucide-react"
+import { formatRupiah } from "@/lib/utils"
 
 export interface InventoryItem {
   id: string
   productId: string
+  productName: string 
+  productUnitPrice: number  
   warehouseId: string
+  warehouseName: string
+  totalPrice: number
   quantity: number
-  reorderLevel?: number
-  product?: {
-    id: string
-    name: string
-    sku: string
-  }
-  warehouse?: {
-    id: string
-    name: string
-  }
-  updatedAt: string
+  lastUpdated: string 
 }
-
+export interface InventoryResponse {
+  success: boolean
+  data: InventoryItem[]
+  message: string
+}
 export const columns: ColumnDef<InventoryItem>[] = [
   {
-    accessorKey: "product.name",
+    accessorKey: "productName",
     header: "Product",
-    cell: ({ row }) => row.original.product?.name || 'N/A',
   },
   {
-    accessorKey: "product.sku",
-    header: "SKU",
-    cell: ({ row }) => row.original.product?.sku || 'N/A',
+    accessorKey: "warehouseName",
+    header: "Warehouse",
+  },
+  {
+    accessorKey: "productUnitPrice",
+    header: "Unit Price",
+    cell: ({ row }) => formatRupiah(row.original.productUnitPrice).toLocaleString(),
   },
   {
     accessorKey: "quantity",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="p-0 hover:bg-transparent"
-        >
-          Quantity
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
+    header: "Quantity",
   },
   {
-    accessorKey: "warehouse.name",
-    header: "Warehouse",
-    cell: ({ row }) => row.original.warehouse?.name || 'N/A',
+    accessorKey: "totalPrice",
+    header: "Total",
+    cell: ({ row }) => formatRupiah(row.original.totalPrice).toLocaleString(),
   },
   {
-    accessorKey: "updatedAt",
+    accessorKey: "lastUpdated",
     header: "Last Updated",
-    cell: ({ row }) => new Date(row.original.updatedAt).toLocaleDateString(),
-  },
+    cell: ({ row }) => new Date(row.original.lastUpdated).toLocaleString(),
+  }
 ]
 
 interface InventoryTableProps {
@@ -117,9 +107,9 @@ export function InventoryTable({ data, isLoading, onAddItem }: InventoryTablePro
       <div className="flex items-center py-4">
         <Input
           placeholder="Filter products..."
-          value={(table.getColumn("product_name")?.getFilterValue() as string) ?? ""}
+          value={(table.getColumn("productName")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("product_name")?.setFilterValue(event.target.value)
+            table.getColumn("productName")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
