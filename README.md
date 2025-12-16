@@ -1,5 +1,7 @@
 # Inventory Management System
 
+![alt text](image-1.png)
+
 A modern inventory management system built with React, TypeScript, and Vite, featuring a clean UI powered by shadcn/ui.
 
 ## Features
