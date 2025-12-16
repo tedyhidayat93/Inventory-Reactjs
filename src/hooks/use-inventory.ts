@@ -1,8 +1,7 @@
 // my-app/src/hooks/use-inventory.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+import axiosInstance from "@/lib/axios"
+import { AxiosError } from 'axios';
 
 // Types
 export type StockMovementType = 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER' | 'OPNAME';
@@ -65,7 +64,7 @@ export const useInventory = () => {
     return useQuery<InventoryItem[]>({
       queryKey: ['inventory', 'warehouse', warehouseId],
       queryFn: async () => {
-        const { data } = await axios.get(`${API_URL}/inventory/warehouse/${warehouseId}`, {
+        const { data } = await axiosInstance.get(`/inventory/warehouse/${warehouseId}`, {
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
         return data.data;
@@ -79,7 +78,7 @@ export const useInventory = () => {
     return useQuery<InventoryItem[]>({
       queryKey: ['inventory', 'product', productId],
       queryFn: async () => {
-        const { data } = await axios.get(`${API_URL}/inventory/product/${productId}`, {
+        const { data } = await axiosInstance.get(`/inventory/product/${productId}`, {
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
         return data.data;
@@ -96,25 +95,25 @@ export const useInventory = () => {
       quantity: number;
       reorderLevel?: number;
     }) => {
-      const { data } = await axios.post(
-        `${API_URL}/inventory`,
+      const { data } = await axiosInstance.post(
+        `/inventory`,
         itemData,
         { headers: { Authorization: `Bearer ${getAuthToken()}` } }
       );
       return data.data;
     },
     onSuccess: (_, variables) => {
-queryClient.invalidateQueries({ queryKey: ['inventory'] });
-queryClient.invalidateQueries({ queryKey: ['inventory', 'warehouse', variables.warehouseId] });
-queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.productId] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'warehouse', variables.warehouseId] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.productId] });
     },
   });
 
   // Update inventory quantity
   const updateQuantity = useMutation({
     mutationFn: async (params: { id: string; quantity: number }) => {
-      const { data } = await axios.patch(
-        `${API_URL}/inventory/${params.id}/quantity`,
+      const { data } = await axiosInstance.patch(
+        `/inventory/${params.id}/quantity`,
         { quantity: params.quantity },
         { headers: { Authorization: `Bearer ${getAuthToken()}` } }
       );
@@ -128,7 +127,7 @@ queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.pro
   // Delete inventory item
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
-      await axios.delete(`${API_URL}/inventory/${id}`, {
+      await axiosInstance.delete(`/inventory/${id}`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
     },
@@ -150,7 +149,7 @@ queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.pro
     return useQuery<{ data: StockMovement[]; total: number }>({
       queryKey: ['stock-movements', params],
       queryFn: async () => {
-        const { data } = await axios.get(`${API_URL}/inventory/movements`, {
+        const { data } = await axiosInstance.get(`/inventory/movements`, {
           params,
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
@@ -170,8 +169,8 @@ queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.pro
       reference?: string;
       notes?: string;
     }) => {
-      const { data } = await axios.post(
-        `${API_URL}/inventory/movements`,
+      const { data } = await axiosInstance.post(
+        `/inventory/movements`,
         movementData,
         { headers: { Authorization: `Bearer ${getAuthToken()}` } }
       );
@@ -195,7 +194,7 @@ queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.pro
     return useQuery<{ data: StockOpname[]; total: number }>({
       queryKey: ['stock-opnames', params],
       queryFn: async () => {
-        const { data } = await axios.get(`${API_URL}/inventory/opnames`, {
+        const { data } = await axiosInstance.get(`/inventory/opnames`, {
           params,
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
@@ -215,8 +214,8 @@ queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.pro
         notes?: string;
       }>;
     }) => {
-      const { data } = await axios.post(
-        `${API_URL}/inventory/opnames`,
+      const { data } = await axiosInstance.post(
+        `/inventory/opnames`,
         opnameData,
         { headers: { Authorization: `Bearer ${getAuthToken()}` } }
       );
@@ -230,8 +229,8 @@ queryClient.invalidateQueries({ queryKey: ['inventory', 'product', variables.pro
 
   const updateStockOpnameStatus = useMutation({
     mutationFn: async (params: { id: string; status: StockOpnameStatus }) => {
-      const { data } = await axios.patch(
-        `${API_URL}/inventory/opnames/${params.id}/status`,
+      const { data } = await axiosInstance.patch(
+        `/inventory/opnames/${params.id}/status`,
         { status: params.status },
         { headers: { Authorization: `Bearer ${getAuthToken()}` } }
       );

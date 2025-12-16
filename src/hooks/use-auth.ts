@@ -1,9 +1,6 @@
-// my-app/src/hooks/use-auth.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'; // Update with your API URL
-
+import axiosInstance from "@/lib/axios"
+import { AxiosError } from 'axios';
 
 interface LoginCredentials {
   email: string;
@@ -29,7 +26,7 @@ export const useAuth = () => {
   // Login mutation
   const loginMutation = useMutation<AuthResponse, Error, LoginCredentials>({
     mutationFn: async (credentials) => {
-      const { data } = await axios.post(`${API_URL}/auth/login`, credentials);
+      const { data } = await axiosInstance.post(`/auth/login`, credentials);
       return data.data;
     },
     onSuccess: (data) => {
@@ -42,7 +39,7 @@ export const useAuth = () => {
   // Register mutation
   const registerMutation = useMutation<AuthResponse, Error, RegisterData>({
     mutationFn: async (userData) => {
-      const { data } = await axios.post(`${API_URL}/auth/register`, userData);
+      const { data } = await axiosInstance.post(`/auth/register`, userData);
       return data;
     },
     onSuccess: (data) => {
@@ -64,9 +61,9 @@ export const useAuth = () => {
           return null;
         }
 
-        console.log('Making request to:', `${API_URL}/auth/me`);
+        console.log('Making request to:', `/auth/me`);
         
-        const response = await axios.get(`${API_URL}/auth/me`, {
+        const response = await axiosInstance.get(`/auth/me`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -78,12 +75,13 @@ export const useAuth = () => {
         console.log('Auth response:', response);
         return response.data;
       } catch (error) {
-        if (axios.isAxiosError(error)) {
+        if (error && typeof error === 'object' && 'isAxiosError' in error && error.isAxiosError) {
+          const axiosError = error as AxiosError;
           console.error('Auth error details:', {
-            status: error.response?.status,
-            statusText: error.response?.statusText,
-            data: error.response?.data,
-            headers: error.response?.headers,
+            status: axiosError.response?.status,
+            statusText: axiosError.response?.statusText,
+            data: axiosError.response?.data,
+            headers: axiosError.response?.headers,
           });
         } else {
           console.error('Unexpected error:', error);

@@ -1,29 +1,97 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WarehouseTable } from "@/components/warehouse-table";
-import { useWarehouses } from "@/hooks/use-warehouse";
+// src/App/Dashboard/Warehouse/Index.tsx
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { WarehouseTable } from "@/components/warehouse-table"
+import { WarehouseForm } from "@/components/warehouse-form"
+import { useWarehouses, type Warehouse } from "@/hooks/use-warehouse"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 export default function WarehousePage() {
-  const { warehouses = [], isLoading } = useWarehouses();
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [currentWarehouse, setCurrentWarehouse] = useState<Warehouse | null>(null)
+  
+  const { 
+    data: warehouses = [], 
+    isLoading,
+    createWarehouse,
+    updateWarehouse,
+    deleteWarehouse
+  } = useWarehouses()
 
   const handleAddWarehouse = () => {
-    // TODO: Implement add warehouse functionality
-    console.log('Add warehouse clicked');
-  };
+    setCurrentWarehouse(null)
+    setIsDialogOpen(true)
+  }
+
+  const handleEditWarehouse = (warehouse: Warehouse) => {
+    setCurrentWarehouse(warehouse)
+    setIsDialogOpen(true)
+  }
+
+  const handleDeleteWarehouse = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this warehouse?')) {
+      await deleteWarehouse(id)
+    }
+  }
+
+  const handleSubmit = async (values: any) => {
+    if (currentWarehouse) {
+      await updateWarehouse(currentWarehouse.id, values)
+    } else {
+      await createWarehouse(values)
+    }
+    setIsDialogOpen(false)
+  }
 
   return (
     <div className="container mx-auto">
       <Card>
-        <CardHeader>
-          <CardTitle>Warehouse Management</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Warehouse Management</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Manage your warehouses and their details
+            </p>
+          </div>
+          <Button onClick={handleAddWarehouse}>Add Warehouse</Button>
         </CardHeader>
         <CardContent>
           <WarehouseTable 
             data={warehouses} 
+            onEdit={handleEditWarehouse}
+            onDelete={handleDeleteWarehouse}
             isLoading={isLoading}
-            onAddWarehouse={handleAddWarehouse}
           />
         </CardContent>
       </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {currentWarehouse ? 'Edit Warehouse' : 'Add New Warehouse'}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {currentWarehouse ? 'Edit warehouse details' : 'Add a new warehouse'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <WarehouseForm
+              warehouse={currentWarehouse || undefined}
+              onSubmit={handleSubmit}
+              onCancel={() => setIsDialogOpen(false)}
+              isLoading={isLoading}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }
