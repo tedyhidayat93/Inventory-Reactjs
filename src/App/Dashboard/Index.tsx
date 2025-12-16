@@ -1,300 +1,271 @@
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useWarehouses } from "@/hooks/use-warehouse"
-import { useInventory } from "@/hooks/use-inventory"
+import { useInventory, StockMovement, StockMovementType } from "@/hooks/use-inventory"
+import { useProducts } from "@/hooks/use-product"
 import { formatRupiah } from "@/lib/utils"
-import { useQuery } from "@tanstack/react-query"
-import axios, { AxiosResponse } from 'axios'
-import { useMemo } from "react"
-import { Button } from "@/components/ui/button"
-
-// Define types
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-}
-
-interface Warehouse {
-  id: string;
-  name: string;
-}
-
-interface InventoryItem {
-  id: string;
-  productId: string;
-  product?: Product;
-  warehouseId: string;
-  warehouse?: Warehouse;
-  quantity: number;
-  reorderLevel?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface WarehouseStock {
-  warehouse: string;
-  totalItems: number;
-  totalValue: number;
-}
-
-// Define types for the transaction history
-interface Transaction {
-  id: string
-  type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
-  productName: string
-  quantity: number
-  fromWarehouse?: string
-  toWarehouse?: string
-  timestamp: string
-  value: number
-}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function DashboardPage() {
-  // const { warehouses, isLoading: isLoadingWarehouses } = useWarehouses();
-  // const { useProductInventory } = useInventory();
-  // // Get all products first
-  // const { data: products = [] } = useQuery<Product[]>({
-  //   queryKey: ['products'],
-  //   queryFn: async () => {
-  //     const { data } = await axios.get<{ data: Product[] }>(
-  //       `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/products`,
-  //       {
-  //         headers: { 
-  //           Authorization: `Bearer ${localStorage.getItem('token') || ''}` 
-  //         }
-  //       }
-  //     );
-  //     return data.data;
-  //   }
-  // });
-  // // For each product, get its inventory
-  // const productInventories = products.map(product => {
-  //   const { data: inventory = [] } = useProductInventory(product.id);
-  //   return inventory;
-  // });
-  // // Flatten all inventory items
-  // const allInventory = useMemo(() => 
-  //   productInventories.flat(), 
-  //   [productInventories]
-  // );
+  const { products = [] } = useProducts()
+  const { data: warehouses = [] } = useWarehouses()
+  const warehouseIds = warehouses.map(w => w.id)
   
-  // // Calculate total stock value
-  // const totalStockValue = inventory.reduce((sum: number, item: InventoryItem) => {
-  //   return sum + (item.quantity * (item.product?.price || 0));
-  // }, 0);
+  const { data: allInventory = [] } = useInventory().useWarehousesInventory(warehouseIds)
+  
+  // --- Pagination State ---
+  const [page, setPage] = useState(1)
+  const limit = 10
 
-  // // Calculate stock per warehouse
-  // const warehouseStock: WarehouseStock[] = warehouses.map((warehouse) => {
-  //   const warehouseInventory = inventory.filter(
-  //     (item: InventoryItem) => item.warehouseId === warehouse.id
-  //   );
-  //   const totalItems = warehouseInventory.reduce(
-  //     (sum: number, item: InventoryItem) => sum + item.quantity, 
-  //     0
-  //   );
-  //   const totalValue = warehouseInventory.reduce(
-  //     (sum: number, item: InventoryItem) => 
-  //       sum + (item.quantity * (item.product?.price || 0)), 
-  //     0
-  //   );
+  const {
+    data: movementsData,
+    isLoading: isMovementsLoading,
+  } = useInventory().useStockMovements({
+    page,
+    limit,
+    startDate: '2025-01-01',
+    endDate: '2025-12-31',
+  })
+
+  const movementHistory: (StockMovement & {
+    productName: string;
+    fromWarehouseName?: string;
+    toWarehouseName?: string;
+  })[] = (movementsData?.data || []).map(move => ({
+    ...move,
+    productName: products.find(p => p.id === move.productId)?.name || 'Unknown Product',
+    fromWarehouseName: move.fromWarehouseId ? warehouses.find(w => w.id === move.fromWarehouseId)?.name || 'Unknown' : undefined,
+    toWarehouseName: move.toWarehouseId ? warehouses.find(w => w.id === move.toWarehouseId)?.name || 'Unknown' : undefined,
+  }))
+
+  const pagination = movementsData?.pagination
+
+  const calculateTotalStockValue = () => {
+    return allInventory.reduce((sum, item) => {
+      const product = products.find(p => p.id === item.productId)
+      return sum + (item.quantity * (product?.price || 0))
+    }, 0)
+  }
+  const totalStockValue = calculateTotalStockValue()
+
+  const warehouseStock = warehouses.map(warehouse => {
+    const warehouseInventory = allInventory.filter(item => item.warehouseId === warehouse.id)
+    const totalItems = warehouseInventory.reduce((sum, item) => sum + item.quantity, 0)
+    const totalValue = warehouseInventory.reduce((sum, item) => {
+      const product = products.find(p => p.id === item.productId)
+      return sum + (item.quantity * (product?.price || 0))
+    }, 0)
+    return { warehouse: warehouse.name, totalItems, totalValue }
+  })
+
+  const isLoading = warehouses.length === 0 || allInventory.length === 0 || isMovementsLoading
+
+  // Add these states at the top of your component with other state declarations
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<StockMovementType | 'ALL'>('ALL')
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ 
+    from: new Date(new Date().setDate(1)), // First day of current month
+    to: new Date() // Today
+  })
+  // Update the movementHistory filtering
+  const filteredMovementHistory = movementHistory.filter(move => {
+    // Search by product name
+    const matchesSearch = move.productName.toLowerCase().includes(searchQuery.toLowerCase())
     
-  //   return {
-  //     warehouse: warehouse.name,
-  //     totalItems,
-  //     totalValue
-  //   };
-  // });
+    // Filter by type
+    const matchesType = typeFilter === 'ALL' || move.type === typeFilter
+    
+    // Filter by date range
+    const moveDate = new Date(move.createdAt)
+    const matchesDateRange = 
+      (!dateRange.from || moveDate >= dateRange.from) &&
+      (!dateRange.to || moveDate <= new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1)) // End of day
+    return matchesSearch && matchesType && matchesDateRange
+  })
 
-  // // Mock transaction history (replace with real data from your API)
-  // const transactionHistory: Transaction[] = [
-  //   // This would come from your API
-  //   {
-  //     id: '1',
-  //     type: 'IN',
-  //     productName: 'Product A',
-  //     quantity: 10,
-  //     toWarehouse: 'Gudang Utama',
-  //     timestamp: '2025-12-16T10:30:00',
-  //     value: 1500000
-  //   },
-  //   // Add more transactions...
-  // ]
-
-  // if (isLoadingWarehouses || isLoadingInventory) {
-  //   return <div>Loading dashboard data...</div>
-  // }
+  if (isLoading) return <div className="container mx-auto p-6">Loading dashboard data...</div>
 
   return (
-    <div className="container mx-auto space-y-6">
-      <Button>Button</Button>
+    <div className="container mx-auto space-y-6 p-6">
       {/* Stock Summary Cards */}
-      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Total Nilai Aset */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Nilai Aset</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatRupiah(totalStockValue)}</div>
             <p className="text-xs text-muted-foreground">Total nilai aset seluruh gudang</p>
           </CardContent>
         </Card>
-        
+
+        {/* Total Gudang */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader>
             <CardTitle className="text-sm font-medium">Total Gudang</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
-              <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
-              <path d="M12 3v6" />
-            </svg>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{warehouses.length}</div>
             <p className="text-xs text-muted-foreground">Total gudang aktif</p>
           </CardContent>
         </Card>
-        
+
+        {/* Total Produk */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader>
             <CardTitle className="text-sm font-medium">Total Produk</CardTitle>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="h-4 w-4 text-muted-foreground"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set(inventory.map(item => item.productId)).size}
-            </div>
+            <div className="text-2xl font-bold">{new Set(allInventory.map(item => item.productId)).size}</div>
             <p className="text-xs text-muted-foreground">Jenis produk berbeda</p>
           </CardContent>
         </Card>
-        
+
+        {/* Total Stok */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader>
             <CardTitle className="text-sm font-medium">Total Stok</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {inventory.reduce((sum, item) => sum + item.quantity, 0)}
-            </div>
+            <div className="text-2xl font-bold">{allInventory.reduce((sum, item) => sum + item.quantity, 0)}</div>
             <p className="text-xs text-muted-foreground">Total item di semua gudang</p>
           </CardContent>
         </Card>
-      </div> */}
+      </div>
 
       {/* Warehouse Stock Overview */}
-      {/* <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Stok per Gudang</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {warehouseStock.map((warehouse) => (
-              <div key={warehouse.warehouse} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{warehouse.warehouse}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {warehouse.totalItems} item • {formatRupiah(warehouse.totalValue)}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                  <div 
-                    className="h-full bg-primary"
-                    style={{
-                      width: `${(warehouse.totalValue / totalStockValue) * 100}%`,
-                      maxWidth: '100%'
-                    }}
-                  />
-                </div>
+        <CardContent className="space-y-4">
+          {warehouseStock.map(ws => (
+            <div key={ws.warehouse} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{ws.warehouse}</span>
+                <span className="text-sm text-muted-foreground">{ws.totalItems} item • {formatRupiah(ws.totalValue)}</span>
               </div>
-            ))}
-          </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                <div className="h-full bg-primary" style={{ width: `${Math.min(100, (ws.totalItems / 100) * 100)}%` }} />
+              </div>
+            </div>
+          ))}
         </CardContent>
-      </Card> */}
+      </Card>
 
-      {/* Transaction History */}
-      {/* <Card>
+      {/* Recent Transactions */}
+      <Card>
         <CardHeader>
-          <CardTitle>Riwayat Transaksi</CardTitle>
+          <CardTitle>Riwayat Pergerakan Barang </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Tipe</th>
-                  <th className="text-left p-2">Produk</th>
-                  <th className="text-right p-2">Qty</th>
-                  <th className="text-left p-2">Dari</th>
-                  <th className="text-left p-2">Ke</th>
-                  <th className="text-right p-2">Nilai</th>
-                  <th className="text-right p-2">Waktu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactionHistory.map((tx) => (
-                  <tr key={tx.id} className="border-b hover:bg-muted/50">
-                    <td className="p-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        tx.type === 'IN' ? 'bg-green-100 text-green-800' :
-                        tx.type === 'OUT' ? 'bg-red-100 text-red-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
-                        {tx.type === 'IN' ? 'Masuk' : tx.type === 'OUT' ? 'Keluar' : 'Transfer'}
-                      </span>
-                    </td>
-                    <td className="p-2">{tx.productName}</td>
-                    <td className="p-2 text-right">{tx.quantity}</td>
-                    <td className="p-2">{tx.fromWarehouse || '-'}</td>
-                    <td className="p-2">{tx.toWarehouse || '-'}</td>
-                    <td className="p-2 text-right">{formatRupiah(tx.value)}</td>
-                    <td className="p-2 text-right">
-                      {new Date(tx.timestamp).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col space-y-4 mb-4">
+            {/* Search and Filters */}
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search Input */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Cari produk..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-md"
+                />
+              </div>
+
+              {/* Type Filter */}
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as StockMovementType | 'ALL')}
+                className="px-4 py-2 border rounded-md"
+              >
+                <option value="ALL">Semua Tipe</option>
+                <option value="IN">Masuk</option>
+                <option value="OUT">Keluar</option>
+                <option value="TRANSFER">Transfer</option>
+                <option value="ADJUSTMENT">Penyesuaian</option>
+                <option value="OPNAME">Stok Opname</option>
+              </select>
+
+              {/* Date Range Picker */}
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={dateRange.from?.toISOString().split('T')[0] || ''}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value ? new Date(e.target.value) : undefined }))}
+                  className="px-4 py-2 border rounded-md"
+                />
+                <span className="flex items-center">s/d</span>
+                <input
+                  type="date"
+                  value={dateRange.to?.toISOString().split('T')[0] || ''}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value ? new Date(e.target.value) : undefined }))}
+                  className="px-4 py-2 border rounded-md"
+                />
+              </div>
+            </div>
           </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tipe</TableHead>
+                <TableHead>Produk</TableHead>
+                <TableHead>Qty</TableHead>
+                <TableHead>Dari</TableHead>
+                <TableHead>Ke</TableHead>
+                <TableHead>Waktu</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredMovementHistory.length > 0 ? filteredMovementHistory.map(move => (
+                <TableRow key={move.id}>
+                  <TableCell className="font-medium">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      move.type === 'IN' ? 'bg-green-100 text-green-800' :
+                      move.type === 'OUT' ? 'bg-red-100 text-red-800' :
+                      'bg-blue-100 text-blue-800'}`}>
+                      {move.type}
+                    </span>
+                  </TableCell>
+                  <TableCell>{move.productName}</TableCell>
+                  <TableCell>{move.quantity}</TableCell>
+                  <TableCell>{move.fromWarehouseName || '-'}</TableCell>
+                  <TableCell>{move.toWarehouseName || '-'}</TableCell>
+                  <TableCell>{new Date(move.createdAt).toLocaleString()}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                    Tidak ada data pergerakan
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          {/* Pagination Controls */}
+          {pagination && (
+            <div className="flex justify-between items-center mt-4">
+              <button
+                disabled={pagination.page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span>Page {pagination.page} of {pagination.totalPages}</span>
+              <button
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </CardContent>
-      </Card> */}
+      </Card>
     </div>
   )
 }

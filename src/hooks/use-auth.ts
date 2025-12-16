@@ -31,7 +31,6 @@ export const useAuth = () => {
     },
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
-      console.log('token:', localStorage.getItem('token'));
       queryClient.setQueryData(['user'], data.user);
     },
   });
@@ -54,15 +53,12 @@ export const useAuth = () => {
     queryFn: async () => {
       try {
         const token = localStorage.getItem('token');
-        console.log('Token from localStorage:', token);
         
         if (!token) {
           console.log('No token found in localStorage');
           return null;
         }
 
-        console.log('Making request to:', `/auth/me`);
-        
         const response = await axiosInstance.get(`/auth/me`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -72,7 +68,6 @@ export const useAuth = () => {
           withCredentials: true // If your API uses cookies
         });
         
-        console.log('Auth response:', response);
         return response.data;
       } catch (error) {
         if (error && typeof error === 'object' && 'isAxiosError' in error && error.isAxiosError) {

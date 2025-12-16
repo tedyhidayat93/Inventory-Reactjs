@@ -1,7 +1,6 @@
 // my-app/src/hooks/use-inventory.ts
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from "@/lib/axios"
-import { AxiosError } from 'axios';
 
 // Types
 export type StockMovementType = 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER' | 'OPNAME';
@@ -73,6 +72,31 @@ export const useInventory = () => {
     });
   };
 
+  // Get Multiple Warehouse Data
+  const useWarehousesInventory = (warehouseIds: string[]) => {
+    // Gunakan useQueries agar aman
+    const queries = useQueries({
+      queries: warehouseIds.map((id) => ({
+        queryKey: ['inventory', 'warehouse', id],
+        queryFn: async () => {
+          const { data } = await axiosInstance.get(`/inventory/warehouse/${id}`, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
+          })
+          return data.data as InventoryItem[]
+        },
+        enabled: !!id,
+      })),
+    })
+
+    // Flatten data dari semua warehouse
+    const data: InventoryItem[] = queries.flatMap(q => q.data ?? [])
+    const isLoading = queries.some(q => q.isLoading)
+    const isError = queries.some(q => q.isError)
+    const error = queries.find(q => q.error)?.error
+
+    return { data, isLoading, isError, error }
+  }
+
   // Get inventory by product
   const useProductInventory = (productId: string) => {
     return useQuery<InventoryItem[]>({
@@ -138,7 +162,6 @@ export const useInventory = () => {
 
   // Stock Movements
   const useStockMovements = (params?: {
-    productId?: string;
     warehouseId?: string;
     type?: StockMovementType;
     startDate?: string;
@@ -146,14 +169,26 @@ export const useInventory = () => {
     page?: number;
     limit?: number;
   }) => {
-    return useQuery<{ data: StockMovement[]; total: number }>({
+    return useQuery<{
+      data: StockMovement[];
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>({
       queryKey: ['stock-movements', params],
       queryFn: async () => {
-        const { data } = await axiosInstance.get(`/inventory/movements`, {
+        const { data: response } = await axiosInstance.get(`/inventory/movements`, {
           params,
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
-        return data.data;
+
+        return {
+          data: response.data.data as StockMovement[],
+          pagination: response.data.pagination,
+        };
       },
       enabled: !!params,
     });
@@ -245,6 +280,7 @@ export const useInventory = () => {
   return {
     // Inventory
     useWarehouseInventory,
+    useWarehousesInventory,
     useProductInventory,
     addOrUpdateItem,
     updateQuantity,
