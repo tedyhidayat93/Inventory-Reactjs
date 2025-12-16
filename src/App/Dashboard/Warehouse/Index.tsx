@@ -43,7 +43,7 @@ export default function WarehousePage() {
 
   const handleSubmit = async (values: any) => {
     if (currentWarehouse) {
-      await updateWarehouse(currentWarehouse.id, values)
+      await updateWarehouse({ id: currentWarehouse.id, ...values })
     } else {
       await createWarehouse(values)
     }

@@ -22,19 +22,14 @@ export const columns: ColumnDef<Warehouse>[] = [
     header: "Location",
   },
   {
-    accessorKey: "capacity",
-    header: "Capacity",
-    cell: ({ row }) => row.getValue("capacity").toLocaleString(),
-  },
-  {
     id: "actions",
     enableHiding: false,
     cell: ({ row, table }) => {
-      const warehouse = row.original
+      const warehouse = row.original;
       const meta = table.options.meta as {
-        onEdit?: (warehouse: Warehouse) => void
-        onDelete?: (id: string) => void
-      } | undefined
+        onEdit?: (warehouse: Warehouse) => void;
+        onDelete?: (id: string) => void;
+      } | undefined;
 
       return (
         <div className="text-right">
@@ -96,10 +91,10 @@ export function WarehouseTable({ data, onEdit, onDelete, isLoading }: WarehouseT
           <tr className="border-b">
             {columns.map((column) => (
               <th
-                key={column.id || String(column.accessorKey)}
+                key={(column as any).id || (column as any).accessorKey}
                 className="text-left py-3 px-4 font-medium"
               >
-                {String(column.header)}
+                {String((column as any).header || '')}
               </th>
             ))}
           </tr>
@@ -108,13 +103,26 @@ export function WarehouseTable({ data, onEdit, onDelete, isLoading }: WarehouseT
           {data.map((warehouse) => (
             <tr key={warehouse.id} className="border-b hover:bg-muted/50">
               {columns.map((column) => (
-                <td key={column.id || String(column.accessorKey)} className="py-3 px-4">
-                  {column.cell
-                    ? column.cell({
-                        row: { original: warehouse, getValue: (key: string) => warehouse[key as keyof Warehouse] },
-                        table: { options: { meta: { onEdit, onDelete } } }
-                      } as any)
-                    : String(warehouse[column.accessorKey as keyof Warehouse] ?? '')}
+                <td key={(column as any).id || String((column as any).accessorKey)} className="py-3 px-4">
+                  {(column as any).cell
+                    ? (column as any).cell({
+                        row: { 
+                          original: warehouse, 
+                          getValue: (key: string) => {
+                            const value = warehouse[key as keyof Warehouse];
+                            return value !== null && value !== undefined ? String(value) : '';
+                          } 
+                        },
+                        table: { 
+                          options: { 
+                            meta: { onEdit, onDelete } 
+                          } 
+                        }
+                      })
+                    : (() => {
+                        const value = warehouse[(column as any).accessorKey as keyof Warehouse];
+                        return value !== null && value !== undefined ? String(value) : '';
+                      })()}
                 </td>
               ))}
             </tr>

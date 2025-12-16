@@ -16,7 +16,6 @@ import { Loader2 } from "lucide-react"
 type WarehouseFormValues = {
   name: string
   location: string
-  capacity: number
 }
 
 interface WarehouseFormProps {
@@ -75,36 +74,6 @@ export function WarehouseForm({
               <FormLabel>Location</FormLabel>
               <FormControl>
                 <Input placeholder="Enter location" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="capacity"
-          rules={{
-            required: "Capacity is required",
-            min: {
-              value: 1,
-              message: "Capacity must be at least 1",
-            },
-          }}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Capacity</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="Enter capacity"
-                  {...field}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    field.onChange(value === "" ? 0 : Number(value))
-                  }}
-                />
               </FormControl>
               <FormMessage />
             </FormItem>

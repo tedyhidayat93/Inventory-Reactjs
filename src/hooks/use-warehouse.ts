@@ -19,14 +19,14 @@ export function useWarehouses() {
     queryKey: ['warehouses'],
     queryFn: async () => {
       const { data } = await axiosInstance.get('/warehouses')
-      return data
+      return data.data;
     }
   })
 
   const createWarehouse = useMutation({
     mutationFn: async (warehouse: Omit<Warehouse, 'id' | 'createdAt' | 'updatedAt'>) => {
       const { data } = await axiosInstance.post('/warehouses', warehouse)
-      return data
+      return data.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] })
@@ -36,7 +36,7 @@ export function useWarehouses() {
   const updateWarehouse = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Warehouse> & { id: string }) => {
       const { data } = await axiosInstance.put(`/warehouses/${id}`, updates)
-      return data
+      return data.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] })
